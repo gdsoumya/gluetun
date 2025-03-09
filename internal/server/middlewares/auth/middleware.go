@@ -3,6 +3,7 @@ package auth
 import (
 	"fmt"
 	"net/http"
+	"strings"
 )
 
 func New(settings Settings, debugLogger DebugLogger) (
@@ -50,7 +51,11 @@ type authHandler struct {
 }
 
 func (h *authHandler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
-	route := request.Method + " " + request.URL.Path
+	if !strings.Contains(request.RequestURI, "/api") {
+		h.childHandler.ServeHTTP(writer, request)
+		return
+	}
+	route := request.Method + " " + strings.TrimPrefix(request.URL.Path, "/api")
 	roles := h.routeToRoles[route]
 	if len(roles) == 0 {
 		h.logger.Debugf("no authentication role defined for route %s", route)

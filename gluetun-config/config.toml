@@ -1,0 +1,25 @@
+[[roles]]
+name = "qbittorrent"
+# Define a list of routes with the syntax "Http-Method /path"
+routes = [
+  "GET /v1/publicip/refresh",
+  "PUT /v1/dns/status",
+  "GET /unbound/actions/restart",
+  "GET /v1/openvpn/settings",
+  "PUT /v1/updater/status",
+  "GET /v1/publicip/ip",
+  "GET /updater/restart",
+  "GET /v1/version",
+  "PUT /v1/vpn/status",
+  "GET /v1/openvpn/status",
+  "PUT /v1/openvpn/status",
+  "GET /v1/dns/status",
+  "GET /v1/updater/status",
+  "GET /openvpn/actions/restart",
+  "GET /v1/vpn/status",
+  "GET /v1/vpn/settings",
+  "PUT /v1/vpn/settings",
+  "GET /v1/openvpn/portforwarded",
+]
+# Define an authentication method with its parameters
+auth = "none"

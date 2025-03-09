@@ -5,6 +5,7 @@ ARG XCPUTRANSLATE_VERSION=v0.6.0
 ARG GOLANGCI_LINT_VERSION=v1.61.0
 ARG MOCKGEN_VERSION=v1.6.0
 ARG BUILDPLATFORM=linux/amd64
+ARG NODE_VERSION=18
 
 FROM --platform=${BUILDPLATFORM} qmcgaw/xcputranslate:${XCPUTRANSLATE_VERSION} AS xcputranslate
 FROM --platform=${BUILDPLATFORM} qmcgaw/binpot:golangci-lint-${GOLANGCI_LINT_VERSION} AS golangci-lint
@@ -58,6 +59,13 @@ RUN GOARCH="$(xcputranslate translate -field arch -targetplatform ${TARGETPLATFO
     -X 'main.created=$CREATED' \
     -X 'main.commit=$COMMIT' \
     " -o entrypoint cmd/gluetun/main.go
+
+FROM node:${NODE_VERSION}-alpine AS ui-builder
+WORKDIR /app
+COPY gluetun-ui/package*.json ./
+RUN npm install
+COPY gluetun-ui/ ./
+RUN npm run build
 
 FROM alpine:${ALPINE_VERSION}
 ARG VERSION=unknown
@@ -235,3 +243,7 @@ RUN apk add --no-cache --update -l wget && \
     deluser openvpn && \
     mkdir /gluetun
 COPY --from=build /tmp/gobuild/entrypoint /gluetun-entrypoint
+
+# Create web directory and copy UI build files
+RUN mkdir -p web
+COPY --from=ui-builder /app/dist/ web/

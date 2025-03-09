@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/qdm12/gluetun/internal/configuration/settings"
+	"github.com/qdm12/gluetun/internal/constants"
 )
 
 func newVPNHandler(ctx context.Context, looper VPNLooper,
@@ -83,6 +84,16 @@ func (h *vpnHandler) setStatus(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	enabled := true
+	if outcome == string(constants.UserStopped) {
+		enabled = false
+	}
+	err = h.looper.SetFirewall(h.ctx, enabled)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
 	encoder := json.NewEncoder(w)
 	if err := encoder.Encode(outcomeWrapper{Outcome: outcome}); err != nil {
 		h.warner.Warn(err.Error())

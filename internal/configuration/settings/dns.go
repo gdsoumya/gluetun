@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/netip"
 
+	"github.com/qdm12/dns/v2/pkg/middlewares/localdns"
 	"github.com/qdm12/gosettings"
 	"github.com/qdm12/gosettings/reader"
 	"github.com/qdm12/gotree"
@@ -31,12 +32,19 @@ type DNS struct {
 	// DOT contains settings to configure the DoT
 	// server.
 	DoT DoT
+
+	LocalDNS localdns.Settings
 }
 
 func (d DNS) validate() (err error) {
 	err = d.DoT.validate()
 	if err != nil {
 		return fmt.Errorf("validating DoT settings: %w", err)
+	}
+
+	err = d.LocalDNS.Validate()
+	if err != nil {
+		return fmt.Errorf("validating LocalDNS settings: %w", err)
 	}
 
 	return nil
@@ -77,6 +85,13 @@ func (d DNS) toLinesNode() (node *gotree.Node) {
 		return node
 	}
 	node.Appendf("DNS server address to use: %s", d.ServerAddress)
+
+	localDNSAddr := ""
+	for _, resolver := range d.LocalDNS.Resolvers {
+		localDNSAddr += resolver.String() + ", "
+	}
+	node.Appendf("Local DNS Addrs: %s", localDNSAddr)
+
 	node.AppendNode(d.DoT.toLinesNode())
 	return node
 }
@@ -95,6 +110,12 @@ func (d *DNS) read(r *reader.Reader) (err error) {
 	err = d.DoT.read(r)
 	if err != nil {
 		return fmt.Errorf("DNS over TLS settings: %w", err)
+	}
+
+	d.LocalDNS = localdns.Settings{}
+	d.LocalDNS.Resolvers, err = r.CSVNetipAddrPorts("LOCALDNS_RESOLVERS")
+	if err != nil {
+		return fmt.Errorf("LOCALDNS settings: %w", err)
 	}
 
 	return nil

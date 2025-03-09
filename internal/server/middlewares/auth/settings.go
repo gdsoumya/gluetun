@@ -111,6 +111,7 @@ func (r Role) validate() (err error) {
 
 // WARNING: do not mutate programmatically.
 var validRoutes = map[string]struct{}{ //nolint:gochecknoglobals
+	http.MethodGet + " /v1/publicip/refresh":      {},
 	http.MethodGet + " /openvpn/actions/restart":  {},
 	http.MethodGet + " /unbound/actions/restart":  {},
 	http.MethodGet + " /updater/restart":          {},

@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strings"
@@ -27,6 +28,17 @@ func (h *publicIPHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			h.getPublicIP(w)
 		default:
 			errMethodNotSupported(w, r.Method)
+		}
+	case "/refresh":
+		switch r.Method {
+		case http.MethodGet:
+			go func() {
+				if err := h.loop.RunOnce(context.Background()); err != nil {
+					h.warner.Warn(err.Error())
+				}
+			}()
+			w.WriteHeader(http.StatusOK)
+			return
 		}
 	default:
 		errRouteNotSupported(w, r.RequestURI)

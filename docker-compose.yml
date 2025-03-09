@@ -1,0 +1,38 @@
+version: "3"
+
+services:
+  # Gluetun VPN Client
+  gluetun:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun
+    environment:
+      - LOCALDNS_RESOLVERS=127.0.0.11:53
+      - VPN_SERVICE_PROVIDER=protonvpn
+      - OPENVPN_USER=<cred>
+      - OPENVPN_PASSWORD=<cred>
+      - SERVER_COUNTRIES=Netherlands
+    ports:
+      - "8000:8000/tcp"
+    volumes:
+      - ./gluetun-config/config.toml:/gluetun/auth/config.toml
+    restart: unless-stopped
+    networks:
+      - gluetun-network
+
+  # Test container using Gluetun's network
+  busybox:
+    image: busybox
+    command: sleep 10000
+    restart: unless-stopped
+    network_mode: "service:gluetun"
+    depends_on:
+      - gluetun
+
+networks:
+  gluetun-network:
+    driver: bridge

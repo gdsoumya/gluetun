@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/qdm12/gluetun/internal/models"
@@ -55,11 +57,39 @@ type handler struct {
 }
 
 func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	r.RequestURI = strings.TrimSuffix(r.RequestURI, "/")
-	if !strings.HasPrefix(r.RequestURI, "/v1/") && r.RequestURI != "/v1" {
-		h.v0.ServeHTTP(w, r)
-		return
+	uiDir := "web"
+	fs := http.FileServer(http.Dir(uiDir))
+
+	if strings.HasPrefix(r.RequestURI, "/api") {
+		r.RequestURI = strings.TrimPrefix(r.RequestURI, "/api")
+		r.RequestURI = strings.TrimSuffix(r.RequestURI, "/")
+		if !strings.HasPrefix(r.RequestURI, "/v1/") && r.RequestURI != "/v1" {
+			h.v0.ServeHTTP(w, r)
+			return
+		}
+		r.RequestURI = strings.TrimPrefix(r.RequestURI, "/v1")
+		h.v1.ServeHTTP(w, r)
+	} else {
+		if w == nil {
+			return
+		}
+		// Check if the file exists in the web directory
+		filePath := filepath.Join(uiDir, r.URL.Path)
+		_, err := os.Stat(filePath)
+
+		// If file doesn't exist or is a directory, serve index.html
+		if os.IsNotExist(err) || (err == nil && strings.HasSuffix(r.URL.Path, "/")) {
+			http.ServeFile(w, r, uiDir+"/index.html")
+			return
+		}
+
+		// For existing files (including assets), serve them directly
+		if err == nil {
+			fs.ServeHTTP(w, r)
+			return
+		}
+
+		// For any other errors, serve index.html (SPA fallback)
+		http.ServeFile(w, r, uiDir+"/index.html")
 	}
-	r.RequestURI = strings.TrimPrefix(r.RequestURI, "/v1")
-	h.v1.ServeHTTP(w, r)
 }

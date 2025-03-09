@@ -9,6 +9,7 @@ import (
 	"github.com/qdm12/dns/v2/pkg/middlewares/cache/lru"
 	filtermiddleware "github.com/qdm12/dns/v2/pkg/middlewares/filter"
 	"github.com/qdm12/dns/v2/pkg/middlewares/filter/mapfilter"
+	"github.com/qdm12/dns/v2/pkg/middlewares/localdns"
 	"github.com/qdm12/dns/v2/pkg/provider"
 	"github.com/qdm12/dns/v2/pkg/server"
 	"github.com/qdm12/gluetun/internal/configuration/settings"
@@ -60,6 +61,17 @@ func buildDoTSettings(settings settings.DNS,
 			return server.Settings{}, fmt.Errorf("creating cache middleware: %w", err)
 		}
 		serverSettings.Middlewares = append(serverSettings.Middlewares, cacheMiddleware)
+	}
+
+	if len(settings.LocalDNS.Resolvers) > 0 {
+		localDNSMiddleware, err := localdns.New(localdns.Settings{
+			Resolvers: settings.LocalDNS.Resolvers,
+			Logger:    logger,
+		})
+		if err != nil {
+			return server.Settings{}, fmt.Errorf("creating local DNS middleware: %w", err)
+		}
+		serverSettings.Middlewares = append(serverSettings.Middlewares, localDNSMiddleware)
 	}
 
 	filterMiddleware, err := filtermiddleware.New(filtermiddleware.Settings{
