@@ -10,11 +10,13 @@ const VPNSettings = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [vpnStatus, setVPNStatus] = useState(null);
+  const [portForwarded, setPortForwarded] = useState(null);
 
   useEffect(() => {
     if (isConnected) {
       fetchVPNSettings();
       fetchVPNStatus();
+      fetchPortForwarded();
     }
   }, [isConnected]);
 
@@ -40,6 +42,15 @@ const VPNSettings = () => {
     }
   };
 
+  const fetchPortForwarded = async () => {
+    try {
+      const data = await fetchData('/v1/openvpn/portforwarded');
+      setPortForwarded(data.port);
+    } catch (error) {
+      console.error('Failed to fetch port forwarded:', error);
+    }
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setSettings(prev => {
@@ -47,7 +58,7 @@ const VPNSettings = () => {
       if (name.includes('.')) {
         const parts = name.split('.');
         const newSettings = { ...prev };
-        
+
         let current = newSettings;
         for (let i = 0; i < parts.length - 1; i++) {
           if (!current[parts[i]]) {
@@ -55,11 +66,11 @@ const VPNSettings = () => {
           }
           current = current[parts[i]];
         }
-        
+
         current[parts[parts.length - 1]] = value;
         return newSettings;
       }
-      
+
       return { ...prev, [name]: value };
     });
   };
@@ -69,14 +80,14 @@ const VPNSettings = () => {
     setSaving(true);
     setError(null);
     setSuccess(null);
-    
+
     try {
       await fetchData('/v1/vpn/settings', 'PUT', settings);
       console.log('VPN settings updated successfully');
 
       setSuccess('VPN settings updated successfully');
       setEditMode(false);
-      
+
       // Refresh the settings to show the updated values
       await fetchVPNSettings();
     } catch (error) {
@@ -116,6 +127,16 @@ const VPNSettings = () => {
           <div>
             <p className="text-sm text-gray-500 dark:text-gray-400">Provider</p>
             <p className="font-medium">{settings.provider.name}</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Port Forwarded</p>
+            <p className="font-medium">
+              {portForwarded ? (
+                <span className="text-green-600 dark:text-green-400">{portForwarded}</span>
+              ) : (
+                <span className="text-gray-400">Not forwarded</span>
+              )}
+            </p>
           </div>
         </div>
       </div>
@@ -218,13 +239,13 @@ const VPNSettings = () => {
   return (
     <div>
       <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-6">VPN Settings</h1>
-      
+
       {error && (
         <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6" role="alert">
           <p>{error}</p>
         </div>
       )}
-      
+
       {success && (
         <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6" role="alert">
           <p>{success}</p>

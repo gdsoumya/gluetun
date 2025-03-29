@@ -1,4 +1,5 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import React from 'react';
+import { Routes, Route, Link, BrowserRouter as Router } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Dashboard from './pages/Dashboard';
 import VPNSettings from './pages/VPNSettings';
@@ -10,7 +11,6 @@ import { ServerProvider } from './context/ServerContext';
 function App() {
   return (
     <ServerProvider>
-      <Router>
         <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
           <Navbar />
           <div className="container mx-auto px-4 py-8">
@@ -23,7 +23,6 @@ function App() {
             </Routes>
           </div>
         </div>
-      </Router>
     </ServerProvider>
   );
 }

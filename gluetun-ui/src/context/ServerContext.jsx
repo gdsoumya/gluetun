@@ -6,7 +6,7 @@ export const useServer = () => useContext(ServerContext);
 
 export const ServerProvider = ({ children }) => {
   // Use the proxied API URL by default
-  const [serverUrl, setServerUrl] = useState(localStorage.getItem('serverUrl') || '/api');
+  const [serverUrl, setServerUrl] = useState(localStorage.getItem('serverUrl') || './api');
   const [isConnected, setIsConnected] = useState(false);
   const [version, setVersion] = useState(null);
   const [connectionError, setConnectionError] = useState(null);
