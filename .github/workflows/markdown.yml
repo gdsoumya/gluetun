@@ -17,6 +17,7 @@ jobs:
     permissions:
       actions: read
       contents: read
+    environment: secrets
     steps:
       - uses: actions/checkout@v6
 
