@@ -278,7 +278,6 @@ func (c *Config) RedirectPort(ctx context.Context, intf string,
 			appendOrDelete(remove), interfaceFlag, destinationPort),
 	})
 	if err != nil {
-		restore(ctx) // just in case
 		errMessage := err.Error()
 		if strings.Contains(errMessage, "can't initialize ip6tables table `nat': Table does not exist") {
 			if !remove {
@@ -286,6 +285,7 @@ func (c *Config) RedirectPort(ctx context.Context, intf string,
 			}
 			return nil
 		}
+		restore(ctx)
 		return fmt.Errorf("redirecting IPv6 source port %d to destination port %d on interface %s: %w",
 			sourcePort, destinationPort, intf, err)
 	}
