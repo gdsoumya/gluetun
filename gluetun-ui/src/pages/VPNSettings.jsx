@@ -34,8 +34,10 @@ const VPNSettings = () => {
     fetchData('/v1/vpn/status')
       .then((d) => setVPNStatus(d.status ?? d.Status))
       .catch(() => {});
-    fetchData('/v1/openvpn/portforwarded')
-      .then((d) => setPortForwarded(d.port))
+    // /v1/portforward replaced /v1/openvpn/portforwarded in v3.41
+    // (the old route 301-redirects, which breaks behind a path prefix proxy)
+    fetchData('/v1/portforward')
+      .then((d) => setPortForwarded(d.port ?? d.ports?.[0]))
       .catch(() => {});
     fetchData('/v1/vpn/serverchoices')
       .then((d) => {
