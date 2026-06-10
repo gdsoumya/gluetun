@@ -11,6 +11,7 @@ const VPNSettings = () => {
   const [editMode, setEditMode] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [reconnecting, setReconnecting] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [vpnStatus, setVPNStatus] = useState(null);
@@ -114,12 +115,38 @@ const VPNSettings = () => {
         },
       };
       await fetchData('/v1/vpn/settings', 'PUT', updated);
-      setSuccess('Server selection applied — the VPN reconnects with the new filters');
       setEditMode(false);
+
+      // Saving the selection alone does not re-dial: gluetun keeps the
+      // current tunnel until the VPN loop restarts. Cycle it so the new
+      // server filters actually take effect.
+      setReconnecting(true);
+      setSuccess('Reconnecting the VPN with the new server selection…');
+      setVPNStatus('stopping');
+      await fetchData('/v1/vpn/status', 'PUT', { status: 'stopped' });
+      await fetchData('/v1/vpn/status', 'PUT', { status: 'running' });
+      setVPNStatus('starting');
+
+      // Poll the public IP until the new tunnel is up (~2 min typical).
+      let settled = false;
+      for (let i = 0; i < 60; i++) {
+        await new Promise((r) => setTimeout(r, 3000));
+        const ip = await fetchData('/v1/publicip/ip').catch(() => null);
+        if (ip?.public_ip) {
+          settled = true;
+          const where = [ip.city, ip.country].filter(Boolean).join(', ');
+          setSuccess(`Connected — new exit IP ${ip.public_ip}${where ? ` (${where})` : ''}`);
+          break;
+        }
+      }
+      if (!settled) {
+        setSuccess('VPN restarted; still negotiating a connection — check the dashboard.');
+      }
       await fetchAll();
     } catch {
-      setError('Failed to update VPN settings');
+      setError('Failed to apply server selection');
     } finally {
+      setReconnecting(false);
       setSaving(false);
     }
   };
@@ -291,7 +318,7 @@ const VPNSettings = () => {
                 Cancel
               </button>
               <button onClick={handleSave} className="btn-primary text-xs" disabled={saving}>
-                {saving ? 'Applying…' : 'Apply & reconnect'}
+                {reconnecting ? 'Reconnecting…' : saving ? 'Applying…' : 'Apply & reconnect'}
               </button>
             </div>
           </div>
