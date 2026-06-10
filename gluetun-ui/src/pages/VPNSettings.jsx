@@ -187,7 +187,7 @@ const VPNSettings = () => {
       </section>
 
       <section className="card animate-fade-up">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 mb-4">
           <h2 className="card-title">Server selection</h2>
           {choices && (
             <span className="font-mono text-xs text-fog-mute">

@@ -12,7 +12,7 @@ function App() {
     <ServerProvider>
       <div className="min-h-screen">
         <Navbar />
-        <main className="container mx-auto max-w-5xl px-4 py-8">
+        <main className="container mx-auto max-w-5xl px-3 sm:px-4 py-5 sm:py-8">
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/vpn" element={<VPNSettings />} />
