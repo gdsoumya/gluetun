@@ -67,10 +67,10 @@ const Dashboard = () => {
     <div className="space-y-6">
       <section className="card relative overflow-hidden animate-fade-up">
         <div className="absolute inset-y-0 right-0 w-1/3 bg-gradient-to-l from-signal/5 to-transparent pointer-events-none" />
-        <div className="flex items-start justify-between flex-wrap gap-4">
-          <div>
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div className="min-w-0">
             <p className="card-title mb-3">Tunnel exit</p>
-            <p className="font-mono text-3xl md:text-4xl text-fog tracking-tight">
+            <p className="font-mono text-2xl xs:text-3xl md:text-4xl text-fog tracking-tight break-all">
               {ipDetails?.public_ip || '—'}
             </p>
             <div className="mt-3 space-y-0.5 text-sm text-fog-dim">
@@ -80,11 +80,11 @@ const Dashboard = () => {
                   .join(' · ') || 'location unknown'}
               </p>
               {ipDetails?.organization && (
-                <p className="font-mono text-xs text-fog-mute">{ipDetails.organization}</p>
+                <p className="font-mono text-xs text-fog-mute break-words">{ipDetails.organization}</p>
               )}
             </div>
           </div>
-          <div className="flex flex-col items-end gap-3">
+          <div className="flex flex-row-reverse items-center justify-end gap-3 sm:flex-col sm:items-end shrink-0">
             <StatusPill status={vpnStatus} />
             <button onClick={refreshPublicIP} disabled={ipLoading} className="btn-ghost text-xs px-3 py-1.5">
               <svg
