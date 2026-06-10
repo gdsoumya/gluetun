@@ -7,6 +7,7 @@ const VPNSettings = () => {
   const { fetchData, isConnected } = useServer();
   const [settings, setSettings] = useState(null);
   const [choices, setChoices] = useState(null);
+  const [choicesError, setChoicesError] = useState(null);
   const [editMode, setEditMode] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -37,8 +38,14 @@ const VPNSettings = () => {
       .then((d) => setPortForwarded(d.port))
       .catch(() => {});
     fetchData('/v1/vpn/serverchoices')
-      .then((d) => setChoices(d))
-      .catch(() => setChoices(null)); // older server or custom provider
+      .then((d) => {
+        setChoices(d);
+        setChoicesError(d?.locations?.length ? null : 'empty');
+      })
+      .catch((e) => {
+        setChoices(null);
+        setChoicesError(/401/.test(e.message) ? 'unauthorized' : 'unavailable');
+      });
   }, [fetchData]);
 
   useEffect(() => {
@@ -219,12 +226,25 @@ const VPNSettings = () => {
           </>
         ) : (
           <div className="space-y-4">
-            {!choices && (
+            {choicesError === 'unauthorized' && (
               <p className="text-sm text-warn">
-                Server list unavailable for this provider — type filter values manually.
+                The server list endpoint returned 401 — add{' '}
+                <code className="font-mono text-xs">"GET /v1/vpn/serverchoices"</code> to the
+                routes of the control server auth config (config.toml) and restart gluetun.
               </p>
             )}
-            {(countryOptions.length > 0 || !choices) && (
+            {choicesError === 'empty' && (
+              <p className="text-sm text-warn">
+                No server list for this provider (custom provider has none) — type filter
+                values manually.
+              </p>
+            )}
+            {choicesError === 'unavailable' && (
+              <p className="text-sm text-warn">
+                Server list unavailable — type filter values manually.
+              </p>
+            )}
+            {(countryOptions.length > 0 || regionOptions.length === 0) && (
               <MultiSelect
                 label="Countries"
                 options={countryOptions}

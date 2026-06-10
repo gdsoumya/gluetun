@@ -64,6 +64,19 @@ const MultiSelect = ({ label, options, selected, onChange, placeholder }) => {
             setOpen(true);
           }}
           onFocus={() => setOpen(true)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              // exact match first, else free-text entry (manual fallback)
+              const match = filtered.find(
+                (o) => o.value.toLowerCase() === query.trim().toLowerCase(),
+              );
+              const value = match?.value || query.trim();
+              if (value) add(value);
+            } else if (e.key === 'Backspace' && !query && selected.length > 0) {
+              remove(selected[selected.length - 1]);
+            }
+          }}
           placeholder={selected.length === 0 ? placeholder : ''}
           className="flex-1 min-w-[120px] bg-transparent border-none outline-none ring-0 focus:ring-0 p-0 text-sm placeholder:text-fog-mute"
         />
@@ -88,7 +101,7 @@ const MultiSelect = ({ label, options, selected, onChange, placeholder }) => {
 
       {open && filtered.length === 0 && query && (
         <div className="absolute z-30 mt-1 w-full bg-ink-700 border border-ink-500 rounded-lg px-3 py-2 text-sm text-fog-mute">
-          no match for “{query}”
+          no match for “{query}” — press Enter to add it anyway
         </div>
       )}
     </div>
