@@ -13,6 +13,7 @@ type VPNLooper interface {
 		outcome string, err error)
 	GetSettings() (settings settings.VPN)
 	SetSettings(ctx context.Context, settings settings.VPN) (outcome string)
+	SetFirewall(ctx context.Context, enable bool) error
 }
 
 type DNSLoop interface {
@@ -28,6 +29,7 @@ type PortForwarding interface {
 
 type PublicIPLoop interface {
 	GetData() (data models.PublicIP)
+	RunOnce(ctx context.Context) (err error)
 }
 
 type Storage interface {

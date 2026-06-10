@@ -19,6 +19,7 @@ type Firewall interface {
 	SetVPNConnection(ctx context.Context, connection models.Connection, interfaceName string) error
 	SetAllowedPort(ctx context.Context, port uint16, interfaceName string) error
 	RemoveAllowedPort(ctx context.Context, port uint16) error
+	SetEnabled(ctx context.Context, enabled bool) (err error)
 	tcp.Firewall
 }
 

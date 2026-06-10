@@ -16,3 +16,7 @@ func (l *Loop) SetSettings(ctx context.Context,
 ) {
 	return l.state.SetSettings(ctx, vpn)
 }
+
+func (l *Loop) SetFirewall(ctx context.Context, enable bool) error {
+	return l.fw.SetEnabled(ctx, enable)
+}

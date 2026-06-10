@@ -154,6 +154,7 @@ var validRoutes = map[string][]string{ //nolint:gochecknoglobals
 	"/v1/dns/status":            {http.MethodGet, http.MethodPut},
 	"/v1/updater/status":        {http.MethodGet, http.MethodPut},
 	"/v1/publicip/ip":           {http.MethodGet},
+	"/v1/publicip/refresh":      {http.MethodGet},
 	"/v1/portforward":           {http.MethodGet, http.MethodPut},
 }
 
