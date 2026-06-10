@@ -1,9 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useServer } from '../context/ServerContext';
+import { StatusPill } from '../components/StatusCard';
+import MultiSelect from '../components/MultiSelect';
 
 const VPNSettings = () => {
   const { fetchData, isConnected } = useServer();
   const [settings, setSettings] = useState(null);
+  const [choices, setChoices] = useState(null);
   const [editMode, setEditMode] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -12,86 +15,100 @@ const VPNSettings = () => {
   const [vpnStatus, setVPNStatus] = useState(null);
   const [portForwarded, setPortForwarded] = useState(null);
 
-  useEffect(() => {
-    if (isConnected) {
-      fetchVPNSettings();
-      fetchVPNStatus();
-      fetchPortForwarded();
-    }
-  }, [isConnected]);
+  // draft selection while editing
+  const [draftCountries, setDraftCountries] = useState([]);
+  const [draftRegions, setDraftRegions] = useState([]);
+  const [draftCities, setDraftCities] = useState([]);
 
-  const fetchVPNSettings = async () => {
+  const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
       const data = await fetchData('/v1/vpn/settings');
       setSettings(data);
-    } catch (error) {
+    } catch {
       setError('Failed to fetch VPN settings');
-      console.error(error);
     } finally {
       setLoading(false);
     }
-  };
+    fetchData('/v1/vpn/status')
+      .then((d) => setVPNStatus(d.status ?? d.Status))
+      .catch(() => {});
+    fetchData('/v1/openvpn/portforwarded')
+      .then((d) => setPortForwarded(d.port))
+      .catch(() => {});
+    fetchData('/v1/vpn/serverchoices')
+      .then((d) => setChoices(d))
+      .catch(() => setChoices(null)); // older server or custom provider
+  }, [fetchData]);
 
-  const fetchVPNStatus = async () => {
-    try {
-      const data = await fetchData('/v1/vpn/status');
-      setVPNStatus(data.Status);
-    } catch (error) {
-      console.error('Failed to fetch VPN status:', error);
+  useEffect(() => {
+    if (isConnected) fetchAll();
+  }, [isConnected, fetchAll]);
+
+  const selection = settings?.provider?.server_selection;
+  const locations = useMemo(() => choices?.locations || [], [choices]);
+
+  // Aggregated option lists derived from the locations matrix.
+  const countryOptions = useMemo(() => {
+    const counts = new Map();
+    for (const l of locations) {
+      if (!l.country) continue;
+      counts.set(l.country, (counts.get(l.country) || 0) + l.servers);
     }
-  };
+    return [...counts.entries()].map(([value, n]) => ({ value, hint: `${n} srv` }));
+  }, [locations]);
 
-  const fetchPortForwarded = async () => {
-    try {
-      const data = await fetchData('/v1/openvpn/portforwarded');
-      setPortForwarded(data.port);
-    } catch (error) {
-      console.error('Failed to fetch port forwarded:', error);
+  const regionOptions = useMemo(() => {
+    const counts = new Map();
+    for (const l of locations) {
+      if (!l.region) continue;
+      counts.set(l.region, (counts.get(l.region) || 0) + l.servers);
     }
+    return [...counts.entries()].map(([value, n]) => ({ value, hint: `${n} srv` }));
+  }, [locations]);
+
+  // Cities cascade: restrict to selected countries when any are picked.
+  const cityOptions = useMemo(() => {
+    const counts = new Map();
+    for (const l of locations) {
+      if (!l.city) continue;
+      if (draftCountries.length > 0 && !draftCountries.includes(l.country)) continue;
+      counts.set(l.city, (counts.get(l.city) || 0) + l.servers);
+    }
+    return [...counts.entries()].map(([value, n]) => ({ value, hint: `${n} srv` }));
+  }, [locations, draftCountries]);
+
+  const startEdit = () => {
+    setDraftCountries(selection?.countries || []);
+    setDraftRegions(selection?.regions || []);
+    setDraftCities(selection?.cities || []);
+    setEditMode(true);
+    setSuccess(null);
+    setError(null);
   };
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setSettings(prev => {
-      // Handle nested properties
-      if (name.includes('.')) {
-        const parts = name.split('.');
-        const newSettings = { ...prev };
-
-        let current = newSettings;
-        for (let i = 0; i < parts.length - 1; i++) {
-          if (!current[parts[i]]) {
-            current[parts[i]] = {};
-          }
-          current = current[parts[i]];
-        }
-
-        current[parts[parts.length - 1]] = value;
-        return newSettings;
-      }
-
-      return { ...prev, [name]: value };
-    });
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSave = async () => {
     setSaving(true);
     setError(null);
     setSuccess(null);
-
     try {
-      await fetchData('/v1/vpn/settings', 'PUT', settings);
-      console.log('VPN settings updated successfully');
-
-      setSuccess('VPN settings updated successfully');
+      const updated = {
+        ...settings,
+        provider: {
+          ...settings.provider,
+          server_selection: {
+            ...settings.provider.server_selection,
+            countries: draftCountries,
+            regions: draftRegions,
+            cities: draftCities,
+          },
+        },
+      };
+      await fetchData('/v1/vpn/settings', 'PUT', updated);
+      setSuccess('Server selection applied — the VPN reconnects with the new filters');
       setEditMode(false);
-
-      // Refresh the settings to show the updated values
-      await fetchVPNSettings();
-    } catch (error) {
-      console.error('Error updating VPN settings:', error);
+      await fetchAll();
+    } catch {
       setError('Failed to update VPN settings');
     } finally {
       setSaving(false);
@@ -100,161 +117,188 @@ const VPNSettings = () => {
 
   if (!isConnected) {
     return (
-      <div className="text-center py-10">
-        <h2 className="text-2xl font-bold text-red-500 mb-4">Not Connected to Gluetun Server</h2>
-        <p className="text-gray-600 dark:text-gray-400">Please check your server configuration</p>
+      <div className="card text-center py-12 animate-fade-up">
+        <h2 className="font-display text-xl text-danger mb-2">Not connected to gluetun</h2>
+        <p className="text-fog-dim text-sm">Check the server configuration page</p>
       </div>
     );
   }
 
-  if (loading) {
+  if (loading || !settings) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+        <div className="animate-spin rounded-full h-10 w-10 border-2 border-ink-500 border-t-signal" />
       </div>
     );
   }
 
-  const renderSettingsView = () => (
+  const summaryChips = (values, emptyLabel) =>
+    values?.length ? (
+      <div className="flex flex-wrap gap-1.5 mt-1">
+        {values.map((v) => (
+          <span key={v} className="chip">{v}</span>
+        ))}
+      </div>
+    ) : (
+      <p className="text-sm text-fog-mute mt-1">{emptyLabel}</p>
+    );
+
+  return (
     <div className="space-y-6">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-        <h2 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">General Settings</h2>
-        <div className="grid grid-cols-2 gap-4">
+      <div className="flex items-center justify-between">
+        <h1 className="font-display font-bold text-2xl text-fog">VPN</h1>
+        <StatusPill status={vpnStatus} />
+      </div>
+
+      {error && <div className="alert-error animate-fade-up">{error}</div>}
+      {success && <div className="alert-success animate-fade-up">{success}</div>}
+
+      <section className="card animate-fade-up">
+        <h2 className="card-title mb-4">General</h2>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           <div>
-            <p className="text-sm text-gray-500 dark:text-gray-400">VPN Type</p>
-            <p className="font-medium">{settings.type}</p>
+            <p className="label-xs">Type</p>
+            <p className="font-mono text-sm mt-1">{settings.type}</p>
           </div>
           <div>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Provider</p>
-            <p className="font-medium">{settings.provider.name}</p>
+            <p className="label-xs">Provider</p>
+            <p className="font-mono text-sm mt-1">{settings.provider?.name}</p>
           </div>
           <div>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Port Forwarded</p>
-            <p className="font-medium">
+            <p className="label-xs">Forwarded port</p>
+            <p className="font-mono text-sm mt-1">
               {portForwarded ? (
-                <span className="text-green-600 dark:text-green-400">{portForwarded}</span>
+                <span className="text-signal">{portForwarded}</span>
               ) : (
-                <span className="text-gray-400">Not forwarded</span>
+                <span className="text-fog-mute">none</span>
               )}
             </p>
           </div>
         </div>
-      </div>
+      </section>
 
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-        <h2 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">Server Selection</h2>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Countries</p>
-            {editMode ? (
-              <div className="mt-1">
-                <input
-                  type="text"
-                  value={settings.provider.server_selection.countries?.join(', ') || ''}
-                  onChange={(e) => {
-                    const countries = e.target.value.split(',').map(c => c.trim()).filter(Boolean);
-                    setSettings({
-                      ...settings,
-                      provider: {
-                        ...settings.provider,
-                        server_selection: {
-                          ...settings.provider.server_selection,
-                          countries: countries
-                        }
-                      }
-                    });
-                  }}
-                  className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white text-sm"
-                  placeholder="e.g. netherlands, germany"
-                />
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Separate multiple countries with commas
+      <section className="card animate-fade-up">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="card-title">Server selection</h2>
+          {choices && (
+            <span className="font-mono text-xs text-fog-mute">
+              {locations.reduce((n, l) => n + l.servers, 0)} servers · {choices.provider}
+            </span>
+          )}
+        </div>
+
+        {!editMode ? (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <p className="label-xs">Countries</p>
+                {summaryChips(selection?.countries, 'any country')}
+              </div>
+              {(selection?.regions?.length > 0 || regionOptions.length > 0) && (
+                <div>
+                  <p className="label-xs">Regions</p>
+                  {summaryChips(selection?.regions, 'any region')}
+                </div>
+              )}
+              <div>
+                <p className="label-xs">Cities</p>
+                {summaryChips(selection?.cities, 'any city')}
+              </div>
+              <div>
+                <p className="label-xs">Protocol</p>
+                <p className="font-mono text-sm mt-1">
+                  {selection?.openvpn?.protocol || settings.type}
                 </p>
               </div>
-            ) : (
-              <p className="font-medium">{settings.provider.server_selection.countries?.join(', ') || 'None'}</p>
-            )}
-          </div>
-          <div>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Protocol</p>
-            <p className="font-medium">{settings.provider.server_selection.openvpn.protocol}</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-        <h2 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">OpenVPN Configuration</h2>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Version</p>
-            <p className="font-medium">{settings.openvpn.version}</p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Interface</p>
-            <p className="font-medium">{settings.openvpn.interface}</p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Process User</p>
-            <p className="font-medium">{settings.openvpn.process_user}</p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Verbosity</p>
-            <p className="font-medium">{settings.openvpn.verbosity}</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="flex justify-end space-x-4">
-        {editMode ? (
-          <>
-            <button
-              onClick={() => {
-                setEditMode(false);
-                fetchVPNSettings(); // Reset to original settings
-              }}
-              className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSubmit}
-              disabled={saving}
-              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors disabled:opacity-50"
-            >
-              {saving ? 'Saving...' : 'Save Changes'}
-            </button>
+            </div>
+            <div className="flex justify-end mt-5">
+              <button onClick={startEdit} className="btn-primary text-xs">
+                Edit selection
+              </button>
+            </div>
           </>
         ) : (
-          <button
-            onClick={() => setEditMode(true)}
-            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-          >
-            Edit Countries
-          </button>
+          <div className="space-y-4">
+            {!choices && (
+              <p className="text-sm text-warn">
+                Server list unavailable for this provider — type filter values manually.
+              </p>
+            )}
+            {(countryOptions.length > 0 || !choices) && (
+              <MultiSelect
+                label="Countries"
+                options={countryOptions}
+                selected={draftCountries}
+                onChange={(v) => {
+                  setDraftCountries(v);
+                  // drop cities that no longer belong to a selected country
+                  if (v.length > 0) {
+                    const valid = new Set(
+                      locations.filter((l) => v.includes(l.country)).map((l) => l.city),
+                    );
+                    setDraftCities((cities) => cities.filter((c) => valid.has(c)));
+                  }
+                }}
+                placeholder="any country — type to search"
+              />
+            )}
+            {regionOptions.length > 0 && (
+              <MultiSelect
+                label="Regions"
+                options={regionOptions}
+                selected={draftRegions}
+                onChange={setDraftRegions}
+                placeholder="any region — type to search"
+              />
+            )}
+            {cityOptions.length > 0 && (
+              <MultiSelect
+                label={draftCountries.length > 0 ? 'Cities (within selected countries)' : 'Cities'}
+                options={cityOptions}
+                selected={draftCities}
+                onChange={setDraftCities}
+                placeholder="any city — type to search"
+              />
+            )}
+            <p className="text-xs text-fog-mute">
+              Leave a filter empty to allow all. Saving reconnects the VPN with the new
+              selection.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setEditMode(false)} className="btn-ghost text-xs" disabled={saving}>
+                Cancel
+              </button>
+              <button onClick={handleSave} className="btn-primary text-xs" disabled={saving}>
+                {saving ? 'Applying…' : 'Apply & reconnect'}
+              </button>
+            </div>
+          </div>
         )}
-      </div>
-    </div>
-  );
+      </section>
 
-  return (
-    <div>
-      <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-6">VPN Settings</h1>
-
-      {error && (
-        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6" role="alert">
-          <p>{error}</p>
+      <section className="card animate-fade-up">
+        <h2 className="card-title mb-4">OpenVPN</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div>
+            <p className="label-xs">Version</p>
+            <p className="font-mono text-sm mt-1">{settings.openvpn?.version}</p>
+          </div>
+          <div>
+            <p className="label-xs">Interface</p>
+            <p className="font-mono text-sm mt-1">{settings.openvpn?.interface}</p>
+          </div>
+          <div>
+            <p className="label-xs">Process user</p>
+            <p className="font-mono text-sm mt-1">{settings.openvpn?.process_user}</p>
+          </div>
+          <div>
+            <p className="label-xs">Verbosity</p>
+            <p className="font-mono text-sm mt-1">{settings.openvpn?.verbosity}</p>
+          </div>
         </div>
-      )}
-
-      {success && (
-        <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6" role="alert">
-          <p>{success}</p>
-        </div>
-      )}
-
-      {renderSettingsView()}
+      </section>
     </div>
   );
 };
 
-export default VPNSettings; 
+export default VPNSettings;

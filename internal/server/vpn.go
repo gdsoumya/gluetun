@@ -8,6 +8,7 @@ import (
 
 	"github.com/qdm12/gluetun/internal/configuration/settings"
 	"github.com/qdm12/gluetun/internal/constants"
+	"github.com/qdm12/gluetun/internal/models"
 )
 
 func newVPNHandler(ctx context.Context, looper VPNLooper,
@@ -48,6 +49,13 @@ func (h *vpnHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			h.getSettings(w)
 		case http.MethodPut:
 			h.patchSettings(w, r)
+		default:
+			errMethodNotSupported(w, r.Method)
+		}
+	case "/serverchoices":
+		switch r.Method {
+		case http.MethodGet:
+			h.getServerChoices(w)
 		default:
 			errMethodNotSupported(w, r.Method)
 		}
@@ -136,5 +144,23 @@ func (h *vpnHandler) patchSettings(w http.ResponseWriter, r *http.Request) {
 	_, err = w.Write([]byte(outcome))
 	if err != nil {
 		h.warner.Warn("writing response: " + err.Error())
+	}
+}
+
+type serverChoices struct {
+	Provider  string                  `json:"provider"`
+	Locations []models.ServerLocation `json:"locations"`
+}
+
+func (h *vpnHandler) getServerChoices(w http.ResponseWriter) {
+	provider := h.looper.GetSettings().Provider.Name
+	choices := serverChoices{
+		Provider:  provider,
+		Locations: h.storage.GetServerLocations(provider),
+	}
+	encoder := json.NewEncoder(w)
+	if err := encoder.Encode(choices); err != nil {
+		h.warner.Warn(err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
 	}
 }

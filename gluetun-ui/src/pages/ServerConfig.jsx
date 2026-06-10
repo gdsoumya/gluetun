@@ -13,123 +13,91 @@ const ServerConfig = () => {
     setLoading(true);
     setError(null);
     setSuccess(null);
-    
+
     try {
-      // Validate URL format
-      new URL(inputUrl);
-      
-      // Update server URL
+      if (!inputUrl.startsWith('/')) {
+        new URL(inputUrl); // validate absolute URLs
+      }
       setServerUrl(inputUrl);
-      
-      // Wait a bit for the connection check to complete
       setTimeout(() => {
         setLoading(false);
         if (isConnected) {
-          setSuccess('Successfully connected to Gluetun server');
+          setSuccess('Connected to gluetun control server');
         } else {
-          setError(connectionError || 'Failed to connect to Gluetun server');
+          setError(connectionError || 'Failed to connect to gluetun control server');
         }
       }, 1000);
-    } catch (error) {
+    } catch {
       setError('Invalid URL format');
       setLoading(false);
     }
   };
 
   return (
-    <div>
-      <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-6">Server Configuration</h1>
-      
-      {error && (
-        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6" role="alert">
-          <p>{error}</p>
-        </div>
-      )}
-      
-      {success && (
-        <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6" role="alert">
-          <p>{success}</p>
-        </div>
-      )}
-      
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-        <h2 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">Gluetun Server URL</h2>
-        
+    <div className="space-y-6">
+      <h1 className="font-display font-bold text-2xl text-fog">Server</h1>
+
+      {error && <div className="alert-error animate-fade-up">{error}</div>}
+      {success && <div className="alert-success animate-fade-up">{success}</div>}
+
+      <section className="card animate-fade-up">
+        <h2 className="card-title mb-4">Control server URL</h2>
+
         <form onSubmit={handleSubmit}>
-          <div className="mb-4">
-            <label htmlFor="serverUrl" className="block text-gray-700 dark:text-gray-300 mb-2">
-              Server URL
-            </label>
-            <input
-              type="text"
-              id="serverUrl"
-              value={inputUrl}
-              onChange={(e) => setInputUrl(e.target.value)}
-              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              placeholder="http://localhost:8000"
-            />
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              Enter the URL of your Gluetun control server, including the port
-            </p>
-          </div>
-          
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <div className={`h-3 w-3 rounded-full mr-2 ${isConnected ? 'bg-green-400' : 'bg-red-500'}`}></div>
-              <span className="text-sm text-gray-600 dark:text-gray-300">
-                {isConnected ? 'Connected' : 'Disconnected'}
-                {connectionError && <span className="ml-2 text-red-500">({connectionError})</span>}
+          <label htmlFor="serverUrl" className="label-xs block mb-1.5">
+            API endpoint
+          </label>
+          <input
+            type="text"
+            id="serverUrl"
+            value={inputUrl}
+            onChange={(e) => setInputUrl(e.target.value)}
+            className="input font-mono"
+            placeholder="./api"
+          />
+          <p className="text-xs text-fog-mute mt-1.5">
+            Use <code className="font-mono text-fog-dim">./api</code> when the UI is served by
+            gluetun itself, or a full URL like{' '}
+            <code className="font-mono text-fog-dim">http://localhost:8000/api</code>
+          </p>
+
+          <div className="flex items-center justify-between mt-5">
+            <div className="flex items-center gap-2 text-sm">
+              <span className={`h-2 w-2 rounded-full ${isConnected ? 'bg-signal' : 'bg-danger'}`} />
+              <span className="text-fog-dim">
+                {isConnected ? 'connected' : 'disconnected'}
+                {connectionError && <span className="ml-2 text-danger text-xs">({connectionError})</span>}
               </span>
             </div>
-            
-            <div className="flex space-x-2">
-              <button
-                type="button"
-                onClick={checkConnection}
-                className="px-4 py-2 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 transition-colors"
-                disabled={loading}
-              >
-                Test Connection
+
+            <div className="flex gap-3">
+              <button type="button" onClick={checkConnection} className="btn-ghost text-xs" disabled={loading}>
+                Test
               </button>
-              <button
-                type="submit"
-                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors disabled:opacity-50"
-                disabled={loading}
-              >
-                {loading ? 'Saving...' : 'Save'}
+              <button type="submit" className="btn-primary text-xs" disabled={loading}>
+                {loading ? 'Saving…' : 'Save'}
               </button>
             </div>
           </div>
         </form>
-      </div>
-      
-      <div className="mt-6 bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-        <h2 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">Connection Troubleshooting</h2>
-        <p className="text-gray-600 dark:text-gray-400 mb-4">
-          If you're having trouble connecting to your Gluetun server, check the following:
-        </p>
-        <ul className="list-disc pl-5 text-gray-600 dark:text-gray-400 space-y-2">
-          <li>Make sure the Gluetun control server is enabled and running</li>
-          <li>Verify the port is correctly exposed if running in Docker</li>
-          <li>Check for CORS issues - the server may need to be configured to allow requests from your browser</li>
-          <li>Ensure there are no network firewalls blocking the connection</li>
-          <li>Try using a tool like curl to test the API directly: <code className="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">curl {serverUrl}/v1/version</code></li>
+      </section>
+
+      <section className="card animate-fade-up">
+        <h2 className="card-title mb-3">Troubleshooting</h2>
+        <ul className="list-disc pl-5 text-sm text-fog-dim space-y-1.5">
+          <li>Make sure the gluetun control server is enabled and running</li>
+          <li>Verify port 8000 is exposed if accessing from outside docker</li>
+          <li>The API lives under the <code className="font-mono">/api</code> prefix when the UI is served by gluetun</li>
+          <li>
+            Test directly:{' '}
+            <code className="font-mono bg-ink-900 border border-ink-600 px-2 py-0.5 rounded text-xs">
+              curl {serverUrl}/v1/version
+            </code>
+          </li>
         </ul>
-      </div>
-      
-      <div className="mt-6 bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-        <h2 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">Using the Nginx Proxy</h2>
-        <p className="text-gray-600 dark:text-gray-400 mb-4">
-          This UI is configured to work with an Nginx proxy that handles CORS issues.
-        </p>
-        <ul className="list-disc pl-5 text-gray-600 dark:text-gray-400 space-y-2">
-          <li>To use the proxy, set the server URL to <code className="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">/api</code></li>
-          <li>The proxy will forward requests to the Gluetun control server</li>
-          <li>If you're not using the proxy, enter the full URL to your Gluetun server</li>
-        </ul>
-      </div>
+      </section>
     </div>
   );
 };
 
-export default ServerConfig; 
+export default ServerConfig;
