@@ -1,3 +1,95 @@
+@import "@fontsource/chakra-petch/500.css";
+@import "@fontsource/chakra-petch/600.css";
+@import "@fontsource/chakra-petch/700.css";
+@import "@fontsource/ibm-plex-sans/400.css";
+@import "@fontsource/ibm-plex-sans/500.css";
+@import "@fontsource/ibm-plex-sans/600.css";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-ink-900 text-fog font-sans antialiased;
+    background-image:
+      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(61, 240, 160, 0.06), transparent),
+      linear-gradient(rgba(31, 43, 55, 0.35) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(31, 43, 55, 0.35) 1px, transparent 1px);
+    background-size: 100% 100%, 48px 48px, 48px 48px;
+    background-attachment: fixed;
+  }
+
+  ::selection {
+    @apply bg-signal/30 text-fog;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-ink-900;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-ink-500 rounded-full border-2 border-solid border-ink-900;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-ink-800/90 border border-ink-600 rounded-xl p-6 backdrop-blur-sm;
+  }
+
+  .card-title {
+    @apply font-display font-semibold text-xs uppercase tracking-[0.18em] text-fog-dim;
+  }
+
+  .label-xs {
+    @apply text-[11px] uppercase tracking-[0.14em] text-fog-mute font-medium;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg
+      font-display font-medium text-sm uppercase tracking-wider
+      transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed
+      focus:outline-none focus-visible:ring-2 focus-visible:ring-signal/60;
+  }
+
+  .btn-primary {
+    @apply btn bg-signal text-ink-950 hover:bg-signal-dim active:scale-[0.98];
+  }
+
+  .btn-ghost {
+    @apply btn bg-ink-700 text-fog-dim border border-ink-500 hover:text-fog hover:border-ink-400;
+  }
+
+  .btn-danger {
+    @apply btn bg-danger-dark text-danger border border-danger/30 hover:border-danger/60;
+  }
+
+  .btn-start {
+    @apply btn bg-signal-dark text-signal border border-signal/30 hover:border-signal/60;
+  }
+
+  .input {
+    @apply w-full px-3 py-2 bg-ink-900 border border-ink-500 rounded-lg text-sm text-fog
+      placeholder:text-fog-mute focus:outline-none focus:border-signal/50
+      focus:ring-1 focus:ring-signal/30 transition-colors;
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-md
+      bg-signal-dark text-signal text-xs font-mono border border-signal/20;
+  }
+
+  .alert-error {
+    @apply border border-danger/40 bg-danger-dark text-danger rounded-lg px-4 py-3 text-sm;
+  }
+
+  .alert-success {
+    @apply border border-signal/40 bg-signal-dark text-signal rounded-lg px-4 py-3 text-sm;
+  }
+}

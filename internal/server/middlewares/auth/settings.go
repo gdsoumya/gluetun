@@ -148,6 +148,7 @@ var validRoutes = map[string][]string{ //nolint:gochecknoglobals
 	"/v1/version":               {http.MethodGet},
 	"/v1/vpn/status":            {http.MethodGet, http.MethodPut},
 	"/v1/vpn/settings":          {http.MethodGet, http.MethodPut},
+	"/v1/vpn/serverchoices":     {http.MethodGet},
 	"/v1/openvpn/status":        {http.MethodGet, http.MethodPut},
 	"/v1/openvpn/portforwarded": {http.MethodGet},
 	"/v1/openvpn/settings":      {http.MethodGet},
