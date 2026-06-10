@@ -180,6 +180,7 @@ var validRoutes = map[string]struct{}{ //nolint:gochecknoglobals
 	http.MethodGet + " /v1/updater/status":        {},
 	http.MethodPut + " /v1/updater/status":        {},
 	http.MethodGet + " /v1/publicip/ip":           {},
+	http.MethodGet + " /v1/publicip/refresh":      {},
 	http.MethodGet + " /v1/portforward":           {},
 }
 

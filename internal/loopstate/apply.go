@@ -29,9 +29,14 @@ func (s *State) ApplyStatus(ctx context.Context, status models.LoopStatus) (
 	existingStatus := s.status
 
 	switch status {
-	case constants.Running:
+	case constants.Running, constants.UserRunning:
 		switch existingStatus {
 		case constants.Stopped, constants.Completed:
+		case constants.UserStopped:
+			if status != constants.UserRunning {
+				s.statusMu.Unlock()
+				return "cannot start, user stopped", nil
+			}
 		default:
 			s.statusMu.Unlock()
 			return "already " + existingStatus.String(), nil
@@ -51,8 +56,8 @@ func (s *State) ApplyStatus(ctx context.Context, status models.LoopStatus) (
 		s.SetStatus(newStatus)
 
 		return newStatus.String(), nil
-	case constants.Stopped:
-		if existingStatus != constants.Running {
+	case constants.Stopped, constants.UserStopped:
+		if existingStatus != constants.Running && existingStatus != constants.UserRunning {
 			s.statusMu.Unlock()
 			return "already " + existingStatus.String(), nil
 		}
@@ -66,7 +71,7 @@ func (s *State) ApplyStatus(ctx context.Context, status models.LoopStatus) (
 		select {
 		case <-ctx.Done():
 		case <-s.stopped:
-			newStatus = constants.Stopped
+			newStatus = status
 		}
 		s.SetStatus(newStatus)
 

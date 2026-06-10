@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/qdm12/gluetun/internal/configuration/settings"
+	"github.com/qdm12/gluetun/internal/constants"
 )
 
 func newVPNHandler(ctx context.Context, looper VPNLooper,
@@ -79,6 +80,14 @@ func (h *vpnHandler) setStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	outcome, err := h.looper.ApplyStatus(h.ctx, status)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	// Stopping the VPN through the UI also disables the firewall
+	// kill-switch so the container keeps network connectivity.
+	enableFirewall := outcome != string(constants.UserStopped)
+	err = h.looper.SetFirewall(h.ctx, enableFirewall)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return

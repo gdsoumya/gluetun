@@ -17,7 +17,8 @@ var errInvalidStatus = errors.New("invalid status")
 func (sw *statusWrapper) getStatus() (status models.LoopStatus, err error) {
 	status = models.LoopStatus(sw.Status)
 	switch status {
-	case constants.Stopped, constants.Running:
+	case constants.Stopped, constants.Running,
+		constants.UserStopped, constants.UserRunning:
 		return status, nil
 	default:
 		return "", fmt.Errorf("%w: %s: possible values are: %s, %s",
