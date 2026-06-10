@@ -5,8 +5,10 @@ import { StatusPill } from './StatusCard';
 /**
  * Full page panel to view and toggle a gluetun service loop
  * (DNS, updater), with an informational footer card.
+ * oneShot: for job-style services (updater) which run once and land
+ * on "completed" — relabels the start button and polls until done.
  */
-const ServicePanel = ({ title, endpoint, infoTitle, info, note }) => {
+const ServicePanel = ({ title, endpoint, infoTitle, info, note, oneShot = false }) => {
   const { fetchData, isConnected } = useServer();
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -38,8 +40,25 @@ const ServicePanel = ({ title, endpoint, infoTitle, info, note }) => {
     setSuccess(null);
     try {
       const result = await fetchData(endpoint, 'PUT', { status: newStatus });
-      setStatus(newStatus);
-      setSuccess(result?.outcome || `${title} ${newStatus === 'running' ? 'started' : 'stopped'}`);
+      setStatus(result?.outcome || newStatus);
+      setSuccess(
+        oneShot && newStatus === 'running'
+          ? `${title} run triggered`
+          : `${title} ${newStatus === 'running' ? 'started' : 'stopped'}`,
+      );
+      if (oneShot && newStatus === 'running') {
+        // poll until the run finishes so the status doesn't go stale
+        for (let i = 0; i < 60; i++) {
+          await new Promise((r) => setTimeout(r, 2000));
+          const data = await fetchData(endpoint);
+          const current = data.status ?? data.Status ?? '';
+          setStatus(current);
+          if (!current.includes('running') && current !== 'starting') {
+            setSuccess(`${title} run finished: ${current}`);
+            break;
+          }
+        }
+      }
     } catch {
       setError(`Failed to ${newStatus === 'running' ? 'start' : 'stop'} ${title}`);
     } finally {
@@ -79,7 +98,7 @@ const ServicePanel = ({ title, endpoint, infoTitle, info, note }) => {
             disabled={loading || status === null}
             className={`${running ? 'btn-danger' : 'btn-start'} text-xs`}
           >
-            {running ? `Stop ${title}` : `Start ${title}`}
+            {running ? `Stop ${title}` : oneShot ? `Run ${title} now` : `Start ${title}`}
           </button>
         </div>
       </section>

@@ -5,6 +5,7 @@ export const statusTone = (status) => {
   if (!status) return 'unknown';
   if (status.includes('running')) return 'up';
   if (status === 'starting' || status === 'stopping') return 'busy';
+  if (status === 'completed') return 'done';
   return 'down';
 };
 
@@ -14,12 +15,14 @@ export const StatusPill = ({ status, loading }) => {
     up: 'border-signal/30 bg-signal-dark text-signal',
     down: 'border-danger/30 bg-danger-dark text-danger',
     busy: 'border-warn/30 bg-warn-dark text-warn',
+    done: 'border-info/30 bg-info-dark text-info',
     unknown: 'border-ink-500 bg-ink-700 text-fog-mute',
   }[tone];
   const dot = {
     up: 'bg-signal animate-pulse-ring',
     down: 'bg-danger',
     busy: 'bg-warn animate-pulse',
+    done: 'bg-info',
     unknown: 'bg-fog-mute',
   }[tone];
 
