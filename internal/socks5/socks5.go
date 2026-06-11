@@ -256,10 +256,10 @@ func udpAssociateExpectedClientEndpoint(request request) (expectedAddrPort netip
 		}
 		return netip.AddrPortFrom(netip.Addr{}, request.port), nil
 	case domainName:
-		if request.destination != "" || request.port != 0 {
-			return netip.AddrPort{}, fmt.Errorf("domain name is not supported for UDP associate destination")
-		}
-		return netip.AddrPort{}, nil
+		// For UDP associate, client endpoint matching is based on observed UDP source
+		// address/port. A hostname is not directly matchable at this stage, so we
+		// ignore the domain name request destination entirely.
+		return netip.AddrPortFrom(netip.Addr{}, request.port), nil
 	default:
 		return netip.AddrPort{}, fmt.Errorf("address type %d is not supported", request.addressType)
 	}

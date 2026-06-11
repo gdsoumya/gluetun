@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"net/netip"
 	"strconv"
 	"strings"
 	"testing"
@@ -699,6 +700,70 @@ func Test_decodeRequest(t *testing.T) {
 				assert.NoError(t, err)
 				testCase.validate(t, request)
 			}
+		})
+	}
+}
+
+func Test_udpAssociateExpectedClientEndpoint(t *testing.T) {
+	t.Parallel()
+
+	testCases := map[string]struct {
+		request     request
+		expected    netip.AddrPort
+		expectedErr string
+	}{
+		"ipv4_endpoint": {
+			request: request{
+				addressType: ipv4,
+				destination: "192.0.2.10",
+				port:        5555,
+			},
+			expected: netip.MustParseAddrPort("192.0.2.10:5555"),
+		},
+		"ipv4_unspecified_address": {
+			request: request{
+				addressType: ipv4,
+				destination: "0.0.0.0",
+				port:        6000,
+			},
+			expected: netip.AddrPortFrom(netip.Addr{}, 6000),
+		},
+		"domain_name_with_port": {
+			request: request{
+				addressType: domainName,
+				destination: "client.example",
+				port:        7000,
+			},
+			expected: netip.AddrPortFrom(netip.Addr{}, 7000),
+		},
+		"domain_name_without_port": {
+			request: request{
+				addressType: domainName,
+				destination: "client.example",
+			},
+			expected: netip.AddrPort{},
+		},
+		"unsupported_address_type": {
+			request: request{
+				addressType: 255,
+			},
+			expectedErr: "address type 255 is not supported",
+		},
+	}
+
+	for name, testCase := range testCases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			result, err := udpAssociateExpectedClientEndpoint(testCase.request)
+
+			if testCase.expectedErr != "" {
+				assert.ErrorContains(t, err, testCase.expectedErr)
+				return
+			}
+
+			assert.NoError(t, err)
+			assert.Equal(t, testCase.expected, result)
 		})
 	}
 }
