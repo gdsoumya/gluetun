@@ -19,6 +19,8 @@ import (
 )
 
 func Test_udpRouter_ResolveGithubFromCloudflareDNS(t *testing.T) {
+	t.Parallel()
+
 	ctx := t.Context()
 	var cancel context.CancelFunc
 	deadline, hasDeadline := ctx.Deadline()
@@ -107,7 +109,7 @@ func Test_udpRouter_ResolveGithubFromCloudflareDNS(t *testing.T) {
 		assert.NoError(t, err, "closing client UDP connection")
 	})
 
-	queryID := uint16(rand.Uint())
+	queryID := uint16(rand.Uint32()) //nolint:gosec
 	dnsRequest := &dns.Msg{
 		MsgHdr: dns.MsgHdr{
 			Id:               queryID,
@@ -156,7 +158,7 @@ func Test_udpRouter_ResolveGithubFromCloudflareDNS(t *testing.T) {
 	assert.Equal(t, dns.RcodeSuccess, dnsResponse.Rcode)
 	require.NotEmpty(t, dnsResponse.Question)
 	assert.Equal(t, dns.Fqdn("github.com"), dnsResponse.Question[0].Name)
-	assert.Equal(t, uint16(dns.TypeA), dnsResponse.Question[0].Qtype)
+	assert.Equal(t, dns.TypeA, dnsResponse.Question[0].Qtype)
 	assert.NotEmpty(t, dnsResponse.Answer)
 	require.NoError(t, err)
 }
