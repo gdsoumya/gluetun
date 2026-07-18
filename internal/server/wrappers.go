@@ -10,6 +10,9 @@ import (
 
 type statusWrapper struct {
 	Status string `json:"status"`
+	// DisableFirewall optionally turns the firewall kill-switch off
+	// when stopping the VPN with status user-stopped.
+	DisableFirewall bool `json:"disable_firewall,omitempty"`
 }
 
 var errInvalidStatus = errors.New("invalid status")

@@ -92,9 +92,9 @@ func (h *vpnHandler) setStatus(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	// Stopping the VPN through the UI also disables the firewall
-	// kill-switch so the container keeps network connectivity.
-	enableFirewall := outcome != string(constants.UserStopped)
+	// A user-initiated stop may explicitly request disabling the
+	// firewall kill-switch so the container keeps network connectivity.
+	enableFirewall := !(outcome == string(constants.UserStopped) && data.DisableFirewall)
 	err = h.looper.SetFirewall(h.ctx, enableFirewall)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
