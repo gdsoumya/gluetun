@@ -15,7 +15,7 @@ const ServerConfig = () => {
     setSuccess(null);
 
     try {
-      if (!inputUrl.startsWith('/')) {
+      if (inputUrl && !inputUrl.startsWith('/')) {
         new URL(inputUrl); // validate absolute URLs
       }
       setServerUrl(inputUrl);
@@ -53,12 +53,11 @@ const ServerConfig = () => {
             value={inputUrl}
             onChange={(e) => setInputUrl(e.target.value)}
             className="input font-mono"
-            placeholder="./api"
+            placeholder="same origin"
           />
           <p className="text-xs text-fog-mute mt-1.5">
-            Use <code className="font-mono text-fog-dim">./api</code> when the UI is served by
-            gluetun itself, or a full URL like{' '}
-            <code className="font-mono text-fog-dim">http://localhost:8000/api</code>
+            Leave empty when the UI is served by gluetun itself, or set a full URL like{' '}
+            <code className="font-mono text-fog-dim">http://localhost:8000</code>
           </p>
 
           <div className="flex items-center justify-between mt-5">
@@ -87,7 +86,7 @@ const ServerConfig = () => {
         <ul className="list-disc pl-5 text-sm text-fog-dim space-y-1.5">
           <li>Make sure the gluetun control server is enabled and running</li>
           <li>Verify port 8000 is exposed if accessing from outside docker</li>
-          <li>The API lives under the <code className="font-mono">/api</code> prefix when the UI is served by gluetun</li>
+          <li>The API is served on the same routes as upstream gluetun, e.g. <code className="font-mono">/v1/version</code></li>
           <li>
             Test directly:{' '}
             <code className="font-mono bg-ink-900 border border-ink-600 px-2 py-0.5 rounded text-xs">

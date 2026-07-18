@@ -56,25 +56,40 @@ func newHandler(ctx context.Context, logger Logger, logging bool,
 	}, nil
 }
 
-// handler serves the API under the /api prefix, with the auth and
-// log middlewares applied, and serves the web UI single page
-// application for all other paths, without authentication.
+// handler serves the control server API on the same routes as
+// upstream gluetun, with the auth and log middlewares applied, and
+// serves the web UI single page application for all other paths,
+// without authentication.
 type handler struct {
 	api http.Handler
 	ui  http.Handler
 }
 
 func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path == "/api" || strings.HasPrefix(r.URL.Path, "/api/") {
-		// Strip the /api prefix from both the path and the request URI,
-		// so the API handlers and the auth middleware (which matches
-		// roles on the path) see the same routes as upstream gluetun.
-		r.URL.Path = strings.TrimPrefix(r.URL.Path, "/api")
-		r.RequestURI = strings.TrimPrefix(r.RequestURI, "/api")
+	if isAPIPath(r.URL.Path) {
 		h.api.ServeHTTP(w, r)
 		return
 	}
 	h.ui.ServeHTTP(w, r)
+}
+
+// v0Paths are the unversioned API paths, see handlerv0.go.
+var v0Paths = map[string]struct{}{ //nolint:gochecknoglobals
+	"/version":                 {},
+	"/openvpn/actions/restart": {},
+	"/unbound/actions/restart": {},
+	"/openvpn/portforwarded":   {},
+	"/openvpn/settings":        {},
+	"/updater/restart":         {},
+}
+
+func isAPIPath(path string) bool {
+	path = strings.TrimSuffix(path, "/")
+	if path == "/v1" || strings.HasPrefix(path, "/v1/") {
+		return true
+	}
+	_, ok := v0Paths[path]
+	return ok
 }
 
 type apiHandler struct {
