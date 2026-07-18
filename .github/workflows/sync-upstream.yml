@@ -1,0 +1,94 @@
+name: Sync upstream
+on:
+  schedule:
+    - cron: "0 4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: sync-upstream
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Fetch upstream
+        run: |
+          git remote add upstream https://github.com/qdm12/gluetun.git
+          git fetch upstream master
+
+      - name: Update upstream-master mirror
+        run: git push --force origin refs/remotes/upstream/master:refs/heads/upstream-master
+
+      - name: Rebase master onto upstream
+        id: rebase
+        run: |
+          NEW_BASE=$(git rev-parse upstream/master)
+          OLD_BASE=$(git merge-base origin/master upstream/master)
+          if [ "$NEW_BASE" = "$OLD_BASE" ]; then
+            echo "master already based on latest upstream"
+            exit 0
+          fi
+          git checkout -B master origin/master
+          if git rebase --onto "$NEW_BASE" "$OLD_BASE" master; then
+            git push --force-with-lease origin master
+          else
+            CONFLICT_COMMIT=$(git rev-parse REBASE_HEAD 2>/dev/null || echo unknown)
+            CONFLICT_SUBJECT=$(git log -1 --format=%s "$CONFLICT_COMMIT" 2>/dev/null || echo unknown)
+            CONFLICT_FILES=$(git diff --name-only --diff-filter=U | head -50)
+            git rebase --abort
+            {
+              echo "conflict=true"
+              echo "commit=$CONFLICT_COMMIT"
+              echo "subject=$CONFLICT_SUBJECT"
+              echo "upstream=$NEW_BASE"
+              echo "files<<EOF"
+              echo "$CONFLICT_FILES"
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Open or update conflict issue
+        if: steps.rebase.outputs.conflict == 'true'
+        env:
+          CONFLICT_COMMIT: ${{ steps.rebase.outputs.commit }}
+          CONFLICT_SUBJECT: ${{ steps.rebase.outputs.subject }}
+          UPSTREAM_SHA: ${{ steps.rebase.outputs.upstream }}
+          CONFLICT_FILES: ${{ steps.rebase.outputs.files }}
+        run: |
+          gh label create upstream-sync-conflict --color D93F0B \
+            --description "Rebase of master onto upstream failed" 2>/dev/null || true
+          BODY="The daily rebase of \`master\` onto upstream \`qdm12/gluetun\` master failed.
+
+          - Master commit to check: \`${CONFLICT_COMMIT}\` (${CONFLICT_SUBJECT})
+          - Upstream master: \`${UPSTREAM_SHA}\`
+          - Conflicting files:
+          \`\`\`
+          ${CONFLICT_FILES}
+          \`\`\`
+
+          See the \"Resolving sync conflicts\" section of CLAUDE.md for the manual procedure.
+
+          cc @gdsoumya"
+          EXISTING=$(gh issue list --label upstream-sync-conflict --state open --json number --jq '.[0].number // empty')
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" --body "$BODY"
+          else
+            gh issue create --title "Upstream sync conflict: master rebase failed" \
+              --label upstream-sync-conflict --body "$BODY"
+          fi
+          exit 1
