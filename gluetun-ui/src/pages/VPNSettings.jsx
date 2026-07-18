@@ -325,27 +325,53 @@ const VPNSettings = () => {
         )}
       </section>
 
-      <section className="card animate-fade-up">
-        <h2 className="card-title mb-4">OpenVPN</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div>
-            <p className="label-xs">Version</p>
-            <p className="font-mono text-sm mt-1">{settings.openvpn?.version}</p>
+      {settings.type === 'wireguard' ? (
+        <section className="card animate-fade-up">
+          <h2 className="card-title mb-4">WireGuard</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <p className="label-xs">Implementation</p>
+              <p className="font-mono text-sm mt-1">{settings.wireguard?.implementation}</p>
+            </div>
+            <div>
+              <p className="label-xs">Interface</p>
+              <p className="font-mono text-sm mt-1">{settings.wireguard?.interface}</p>
+            </div>
+            <div>
+              <p className="label-xs">MTU</p>
+              <p className="font-mono text-sm mt-1">{settings.wireguard?.mtu}</p>
+            </div>
+            <div>
+              <p className="label-xs">Addresses</p>
+              <p className="font-mono text-sm mt-1 break-all">
+                {settings.wireguard?.addresses?.join(', ') || '—'}
+              </p>
+            </div>
           </div>
-          <div>
-            <p className="label-xs">Interface</p>
-            <p className="font-mono text-sm mt-1">{settings.openvpn?.interface}</p>
+        </section>
+      ) : (
+        <section className="card animate-fade-up">
+          <h2 className="card-title mb-4">OpenVPN</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <p className="label-xs">Version</p>
+              <p className="font-mono text-sm mt-1">{settings.openvpn?.version}</p>
+            </div>
+            <div>
+              <p className="label-xs">Interface</p>
+              <p className="font-mono text-sm mt-1">{settings.openvpn?.interface}</p>
+            </div>
+            <div>
+              <p className="label-xs">Process user</p>
+              <p className="font-mono text-sm mt-1">{settings.openvpn?.process_user}</p>
+            </div>
+            <div>
+              <p className="label-xs">Verbosity</p>
+              <p className="font-mono text-sm mt-1">{settings.openvpn?.verbosity}</p>
+            </div>
           </div>
-          <div>
-            <p className="label-xs">Process user</p>
-            <p className="font-mono text-sm mt-1">{settings.openvpn?.process_user}</p>
-          </div>
-          <div>
-            <p className="label-xs">Verbosity</p>
-            <p className="font-mono text-sm mt-1">{settings.openvpn?.verbosity}</p>
-          </div>
-        </div>
-      </section>
+        </section>
+      )}
     </div>
   );
 };

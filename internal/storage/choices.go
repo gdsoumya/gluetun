@@ -30,8 +30,9 @@ func (s *Storage) GetFilterChoices(provider string) models.FilterChoices {
 }
 
 // GetServerLocations returns the list of available locations
-// (country/city pairs with their server count) for the provider.
-func (s *Storage) GetServerLocations(provider string) (locations []models.ServerLocation) {
+// (country/city pairs with their server count) for the provider,
+// limited to servers supporting the given VPN type.
+func (s *Storage) GetServerLocations(provider, vpnType string) (locations []models.ServerLocation) {
 	if provider == providers.Custom {
 		return nil
 	}
@@ -42,6 +43,9 @@ func (s *Storage) GetServerLocations(provider string) (locations []models.Server
 	servers := s.getMergedServersObject(provider).Servers
 	indexes := make(map[models.ServerLocation]int, len(servers))
 	for _, server := range servers {
+		if server.VPN != vpnType {
+			continue
+		}
 		key := models.ServerLocation{
 			Country: server.Country,
 			Region:  server.Region,
