@@ -1,0 +1,31 @@
+services:
+  gluetun:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun
+    environment:
+      - VPN_SERVICE_PROVIDER=protonvpn
+      - OPENVPN_USER=changeme
+      - OPENVPN_PASSWORD=changeme
+      - SERVER_COUNTRIES=Netherlands
+      - VPN_PORT_FORWARDING=on
+    ports:
+      # Control server: web UI at / and API under /api
+      - "8000:8000/tcp"
+    volumes:
+      # Optional: control server auth roles, see config.toml
+      - ./config.toml:/gluetun/auth/config.toml
+    restart: unless-stopped
+
+  # Example container routing its traffic through gluetun
+  busybox:
+    image: busybox
+    command: sleep infinity
+    network_mode: "service:gluetun"
+    depends_on:
+      - gluetun
+    restart: unless-stopped
