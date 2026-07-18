@@ -6,12 +6,17 @@ const ServerContext = createContext();
 export const useServer = () => useContext(ServerContext);
 
 // The API is served from the same origin and base path as the UI.
+// Resolved at request time so the same browser works whether the UI
+// is reached directly or through a reverse proxy path prefix.
 const defaultServerUrl = () => getBasePath().replace(/\/+$/, '');
 
+// Empty string means "auto" (same origin and base path as the UI).
 const initialServerUrl = () => {
   const stored = localStorage.getItem('serverUrl');
-  // './api' was the default before the API moved to the root path
-  if (!stored || stored === './api') return defaultServerUrl();
+  if (!stored) return '';
+  // pre-root-API endpoints pointed at the /api prefix
+  if (stored === './api') return '';
+  if (stored.endsWith('/api')) return stored.slice(0, -'/api'.length).replace(/\/+$/, '');
   return stored;
 };
 
@@ -21,29 +26,43 @@ export const ServerProvider = ({ children }) => {
   const [version, setVersion] = useState(null);
   const [connectionError, setConnectionError] = useState(null);
 
+  const apiBase = serverUrl || defaultServerUrl();
+
   const checkConnection = useCallback(async () => {
     try {
       setConnectionError(null);
-      const response = await fetch(`${serverUrl}/v1/version`, {
+      const response = await fetch(`${apiBase}/v1/version`, {
         method: 'GET',
         headers: { Accept: 'application/json' },
       });
 
-      if (response.ok) {
+      if (!response.ok) {
+        setConnectionError(`Server error: ${response.status} ${response.statusText}`);
+        setIsConnected(false);
+        return;
+      }
+      try {
         setVersion(await response.json());
         setIsConnected(true);
-      } else {
-        setConnectionError(`Server error: ${response.status} ${response.statusText}`);
+      } catch {
+        setConnectionError(
+          `${apiBase || '/'}/v1/version did not return JSON — check the API endpoint setting`,
+        );
         setIsConnected(false);
       }
     } catch (error) {
       setConnectionError(`Connection error: ${error.message}`);
       setIsConnected(false);
     }
-  }, [serverUrl]);
+  }, [apiBase]);
 
   useEffect(() => {
-    localStorage.setItem('serverUrl', serverUrl);
+    // only persist explicit user-set endpoints, never the computed default
+    if (serverUrl) {
+      localStorage.setItem('serverUrl', serverUrl);
+    } else {
+      localStorage.removeItem('serverUrl');
+    }
     checkConnection();
   }, [serverUrl, checkConnection]);
 
@@ -60,7 +79,7 @@ export const ServerProvider = ({ children }) => {
         options.body = JSON.stringify(body);
       }
 
-      const response = await fetch(`${serverUrl}${endpoint}`, options);
+      const response = await fetch(`${apiBase}${endpoint}`, options);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -72,7 +91,7 @@ export const ServerProvider = ({ children }) => {
         return true;
       }
     },
-    [serverUrl],
+    [apiBase],
   );
 
   const value = {
