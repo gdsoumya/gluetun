@@ -149,14 +149,17 @@ func (h *vpnHandler) patchSettings(w http.ResponseWriter, r *http.Request) {
 
 type serverChoices struct {
 	Provider  string                  `json:"provider"`
+	VPNType   string                  `json:"vpn_type"`
 	Locations []models.ServerLocation `json:"locations"`
 }
 
 func (h *vpnHandler) getServerChoices(w http.ResponseWriter) {
-	provider := h.looper.GetSettings().Provider.Name
+	settings := h.looper.GetSettings()
+	provider := settings.Provider.Name
 	choices := serverChoices{
 		Provider:  provider,
-		Locations: h.storage.GetServerLocations(provider),
+		VPNType:   settings.Type,
+		Locations: h.storage.GetServerLocations(provider, settings.Type),
 	}
 	encoder := json.NewEncoder(w)
 	if err := encoder.Encode(choices); err != nil {
