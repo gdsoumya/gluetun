@@ -13,6 +13,9 @@ services:
       - OPENVPN_PASSWORD=changeme
       - SERVER_COUNTRIES=Netherlands
       - VPN_PORT_FORWARDING=on
+      # Versions after v3.41.x deny control server routes with no role by
+      # default; uncomment to keep the API open like v3.41.x and before:
+      # - HTTP_CONTROL_SERVER_AUTH_DEFAULT_ROLE={"auth":"none"}
     ports:
       # Control server: web UI at / and API under /api
       - "8000:8000/tcp"
