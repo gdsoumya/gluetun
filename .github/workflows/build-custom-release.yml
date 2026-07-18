@@ -42,9 +42,7 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: |
-            ${{ steps.vars.outputs.image }}:${{ steps.vars.outputs.tag }}
-            ${{ steps.vars.outputs.image }}:${{ github.ref_name }}
+          tags: ${{ steps.vars.outputs.image }}:${{ steps.vars.outputs.tag }}
           build-args: |
             VERSION=${{ steps.vars.outputs.tag }}
             CREATED=${{ steps.vars.outputs.created }}
