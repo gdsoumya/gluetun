@@ -112,6 +112,7 @@ const Dashboard = () => {
           endpoint="/v1/vpn/status"
           description="OpenVPN / WireGuard tunnel"
           onStatusChange={(status) => setVPNStatus(status)}
+          stopFirewallOption
         />
         <StatusCard title="DNS" endpoint="/v1/dns/status" description="Encrypted DNS resolver" />
         <StatusCard title="Updater" endpoint="/v1/updater/status" description="Server list updater" />

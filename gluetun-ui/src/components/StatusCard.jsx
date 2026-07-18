@@ -34,11 +34,13 @@ export const StatusPill = ({ status, loading }) => {
   );
 };
 
-const StatusCard = ({ title, endpoint, description, onStatusChange }) => {
+const StatusCard = ({ title, endpoint, description, onStatusChange, stopFirewallOption }) => {
   const { fetchData } = useServer();
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [confirmingStop, setConfirmingStop] = useState(false);
+  const [disableFirewall, setDisableFirewall] = useState(false);
 
   const fetchStatus = useCallback(async () => {
     setLoading(true);
@@ -53,21 +55,33 @@ const StatusCard = ({ title, endpoint, description, onStatusChange }) => {
     }
   }, [endpoint, fetchData]);
 
-  const toggleStatus = async () => {
+  const applyStatus = async (body) => {
     setLoading(true);
     setError(null);
     try {
-      const running = status.includes('running');
-      const newStatus = running ? 'user-stopped' : 'user-running';
-      const data = await fetchData(endpoint, 'PUT', { status: newStatus });
-      const display = newStatus.replace('user-', '');
+      const data = await fetchData(endpoint, 'PUT', body);
+      const display = body.status.replace('user-', '');
       setStatus(display);
       onStatusChange?.(display, data?.outcome);
     } catch {
       setError('failed to update status');
     } finally {
       setLoading(false);
+      setConfirmingStop(false);
     }
+  };
+
+  const toggleStatus = () => {
+    if (!status.includes('running')) {
+      applyStatus({ status: 'user-running' });
+      return;
+    }
+    if (stopFirewallOption && !confirmingStop) {
+      setDisableFirewall(false);
+      setConfirmingStop(true);
+      return;
+    }
+    applyStatus({ status: 'user-stopped', disable_firewall: disableFirewall });
   };
 
   useEffect(() => {
@@ -86,6 +100,35 @@ const StatusCard = ({ title, endpoint, description, onStatusChange }) => {
 
       {error && <p className="text-danger text-xs font-mono mb-3">{error}</p>}
 
+      {confirmingStop && (
+        <div className="mt-4 rounded border border-danger/30 bg-danger-dark/40 p-3 space-y-3">
+          <label className="flex items-start gap-2 text-xs text-fog-dim cursor-pointer">
+            <input
+              type="checkbox"
+              className="mt-0.5 accent-current"
+              checked={disableFirewall}
+              onChange={(e) => setDisableFirewall(e.target.checked)}
+            />
+            <span>
+              Also turn off the firewall kill-switch, allowing traffic outside the VPN tunnel
+              while stopped
+            </span>
+          </label>
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={() => setConfirmingStop(false)}
+              className="btn-ghost text-xs px-3 py-1.5"
+              disabled={loading}
+            >
+              Cancel
+            </button>
+            <button onClick={toggleStatus} className="btn-danger text-xs px-3 py-1.5" disabled={loading}>
+              Stop VPN
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="flex justify-between items-center mt-4">
         <button onClick={fetchStatus} className="btn-ghost text-xs px-3 py-1.5" disabled={loading}>
           Refresh
@@ -93,7 +136,7 @@ const StatusCard = ({ title, endpoint, description, onStatusChange }) => {
         <button
           onClick={toggleStatus}
           className={`${running ? 'btn-danger' : 'btn-start'} text-xs px-3 py-1.5`}
-          disabled={loading}
+          disabled={loading || confirmingStop}
         >
           {running ? 'Stop' : 'Start'}
         </button>
