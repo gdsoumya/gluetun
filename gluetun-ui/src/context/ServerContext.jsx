@@ -1,12 +1,22 @@
 import { createContext, useState, useContext, useEffect, useCallback } from 'react';
+import { getBasePath } from '../utils/basePathUtils';
 
 const ServerContext = createContext();
 
 export const useServer = () => useContext(ServerContext);
 
+// The API is served from the same origin and base path as the UI.
+const defaultServerUrl = () => getBasePath().replace(/\/+$/, '');
+
+const initialServerUrl = () => {
+  const stored = localStorage.getItem('serverUrl');
+  // './api' was the default before the API moved to the root path
+  if (!stored || stored === './api') return defaultServerUrl();
+  return stored;
+};
+
 export const ServerProvider = ({ children }) => {
-  // Use the proxied API URL by default
-  const [serverUrl, setServerUrl] = useState(localStorage.getItem('serverUrl') || './api');
+  const [serverUrl, setServerUrl] = useState(initialServerUrl);
   const [isConnected, setIsConnected] = useState(false);
   const [version, setVersion] = useState(null);
   const [connectionError, setConnectionError] = useState(null);
